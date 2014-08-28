@@ -6,10 +6,6 @@ mainly extracts variables. Variables are recognized by a pattern:
 -   length : number followed by 'px' or 'em'
 -   color : \#xxxxxx or \#xxx
 
-It generates two new files:
-
-      <infile>.refactored.less      - the refactored lessfile
-      <infile>.refactored_vars.less - the new variables file
 
 ## Installation
 
@@ -29,7 +25,13 @@ Or install it yourself as:
 
 1.  run
 
-    lessfactor infile.less varfile.less
+    lessfactor varfile.less infile.less 
+    
+    It generates two new files:
+    
+          <infile>.refactored.less      - the refactored lessfile
+          <infile>.refactored_vars.less - the new variables file
+
 
 2.  identify the semantics of the variables, e.g. by comparing
     'infile.refactored.less' with 'infile.less'
@@ -37,14 +39,30 @@ Or install it yourself as:
 4.  rerun lessfactor to get the new variable names
 5.  merge the refactored files back into your project
 
+    * find ambiguous variable names by "__@"
+    * investigate the highest occurrences first
+
 ## Known Issues
 
 This is a very first shot. Areas of improvements:
 
 * more robust parser
 * option to ignore particular literals from being refactored - no idea how to achieve that
-* do not crate a new variables file but patch the existing one
+* do not create a new variables file but patch the existing one
 * apply the same for sass
+
+## version history
+
+### 0.0.2 
+
+* now forward comments on the variables
+* expose the lines of occurrence for extracted variables
+* concatenate the variable names in case of ambiguity
+* fixed usage screen
+
+### 0.0.1
+
+* initial version
 
 ## Contributing
 

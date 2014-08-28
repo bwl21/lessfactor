@@ -1,51 +1,61 @@
-
+require "lessfactor/version"
 
 
 class LessReplacer
 
-  VAR_PATTERN    = /(@[a-z\-]+):\s*([^;]*);/
+  VAR_PATTERN = /(@[a-z\-]+):\s*([^;]*);(.*)/
   LENGTH_PATTERN = /(\s+|:)([0-9\.]+(em|px|));/
-  COLOR_PATTERN  = /()(#[a-fA-F0-9]+);/
+  COLOR_PATTERN = /()(#[a-fA-F0-9]+);/
 
 
   def initialize
     @vars = {}
     @literals = {}
+    @literalcomments = {}
+    @occurence = {}
   end
 
   def scan_vars(file)
     File.open(file, "r").readlines.each do |l|
-       l.match(VAR_PATTERN) do |m|
-         value =$2.downcase
-         @vars[$1] = value
-         @literals[value] = $1
-       end
+      l.match(VAR_PATTERN) do |m|
+        value =$2.downcase
+        @vars[$1] = {v: value, c: $3}
+        (@literals[value] ||= []).push $1
+      end
     end
   end
 
   def scan_literals(file)
+    line = 0
     File.open(file, "r").readlines.each do |l|
+
+      line +=1
+
       l.match(LENGTH_PATTERN) do |m|
         value =$2.downcase
         unless @literals[value]
-          @literals[value] = "@zz-length-" + "000#{@literals.keys.count}"[-3 .. -1]
+          (@literals[value] ||= []).push "@zz-size-" + "000#{@literals.keys.count}"[-3 .. -1]
         end
+        (@literalcomments[value] ||= []).push line
       end
+
       l.match(COLOR_PATTERN) do |m|
         value =$2.downcase
         unless @literals[value]
-          @literals[value] = "@zz-color-" + "000#{@literals.keys.count}"[-3 .. -1]
+          (@literals[value] ||= []).push "@zz-color-" + "000#{@literals.keys.count}"[-3 .. -1]
         end
+        (@literalcomments[value] ||= []).push line
       end
     end
   end
 
   def replace_vars(infile, outfile)
-    result = File.open(infile, "r").readlines.each.map{|l|
+    result = File.open(infile, "r").readlines.each.map { |l|
       r1 = l.gsub(LENGTH_PATTERN) do |m|
         vn =$2.downcase
         if  @literals[vn]
-          $1 + @literals[vn] + ';'
+          name = @literals[vn].join("__")
+          $1 + name +';'
         else
           m
         end
@@ -54,7 +64,8 @@ class LessReplacer
       r1.gsub(COLOR_PATTERN) do |m|
         vn =$2.downcase
         if  @literals[vn]
-          $1 + @literals[vn] +';'
+          name = @literals[vn].join("__")
+          $1 + name +';'
         else
           m
         end
@@ -69,14 +80,22 @@ class LessReplacer
 
   def save_vars(file)
     File.open(file, "w") do |f|
-      @literals.sort{|a, b| a[1]<=> b[1] }.each{|value, name| f.puts "#{name}: #{value};" }
+      @literals.sort { |a, b| a[1] <=> b[1] }.each { |value, name|
+        the_name = name.first
+        occurrences = @literalcomments[value] || []
+        comment = @vars[the_name] || {c: " // todo: #{occurrences.count}: #{occurrences}"}
+        f.printf "%-25s %-15s %s\n", "#{the_name}:", " #{value};", comment[:c]
+      }
     end
   end
 end
 
 unless ARGV[1]
-  puts %q{
-    usage: lessfactor <infile> <variablesfile>
+  puts %Q{
+
+    this is lessfactor #{LessFactor::VERSION} (#{LessFactor::HOMEPAGE_URL})
+
+    usage: lessfactor  <variablesfile> <infile>
 
     creates 
 
